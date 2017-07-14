@@ -1,5 +1,6 @@
 package com.example.lossweather;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
@@ -22,6 +23,7 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.example.lossweather.gson.Forecast;
 import com.example.lossweather.gson.Weather;
+import com.example.lossweather.service.AutoUpdateService;
 import com.example.lossweather.util.HttpUtil;
 import com.example.lossweather.util.Utility;
 
@@ -74,6 +76,8 @@ public class WeatherActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+
+        //将背景图片与状态栏 结合到一起
         if (Build.VERSION.SDK_INT >= 21) {
 
             View decorView = getWindow().getDecorView();
@@ -174,7 +178,13 @@ public class WeatherActivity extends AppCompatActivity {
             @Override
             public void onRefresh() {
 
-                requestWeather(weatherId);
+                SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this);
+
+                String weatherString = pref.getString("weather", null);
+
+                Weather weather = Utility.handleWeatherResponce(weatherString);
+
+                requestWeather(weather.basic.weatherId);
 
             }
         });
@@ -248,7 +258,7 @@ public class WeatherActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Log.d(TAG, "run: onfailure");
+
 
                         Toast.makeText(WeatherActivity.this, "获取天气信息失败", Toast.LENGTH_SHORT).show();
 
@@ -257,21 +267,18 @@ public class WeatherActivity extends AppCompatActivity {
                 });
 
 
-
-
-
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
 
+
+                //得到服务器返回的json字符串
                 final String responceText = response.body().string();
 
-                Log.d(TAG, "onResponse: responseText " + responceText);
-
+                //将json字符串解析为weather实体对象
                 final Weather weather = Utility.handleWeatherResponce(responceText);
 
-                Log.d(TAG, "onResponse: handleweatherResponce");
 
                 runOnUiThread(new Runnable() {
                     @Override
@@ -279,15 +286,15 @@ public class WeatherActivity extends AppCompatActivity {
 
 
                         if (weather != null && "ok".equals(weather.status)) {
+
                             SharedPreferences.Editor editor = PreferenceManager.
                                     getDefaultSharedPreferences(WeatherActivity.this).edit();
 
                             editor.putString("weather", responceText);
+
                             editor.apply();
 
                             showWeatherInfo(weather);
-
-                            Log.d(TAG, "run: showweatherInfo" + weather);
 
 
                         } else {
@@ -320,8 +327,6 @@ public class WeatherActivity extends AppCompatActivity {
 
     public void showWeatherInfo(Weather weather) {
 
-        //Log.d(TAG, "showWeatherInfo: " + weather);
-
         String cityName = weather.basic.cityName;
         String updateTime = weather.basic.update.updateTime.split(" ")[1];
 
@@ -351,20 +356,22 @@ public class WeatherActivity extends AppCompatActivity {
 
             infoText.setText(forecast.more.info);
 
-            Log.d(TAG, "show-WeatherInfo: " + forecast.more.info);
 
-            maxText.setText(forecast.temprature.max);
+            maxText.setText(forecast.temprature.max+"℃");
 
-            Log.d(TAG, "showWeatherInfo: " + forecast.temprature.max);
 
-            minText.setText(forecast.temprature.min);
+            minText.setText(forecast.temprature.min+"℃");
 
 
             forecastLayout.addView(view);
 
         }
 
+
+
+
         if (weather.aqi != null) {
+
             aqiText.setText(weather.aqi.city.aqi);
 
             pm25Text.setText(weather.aqi.city.pm25);
@@ -382,7 +389,18 @@ public class WeatherActivity extends AppCompatActivity {
 
         sportText.setText(sport);
 
+
         weatherLayout.setVisibility(View.VISIBLE);
+
+        if (weather != null && "ok".equals(weather.status)) {
+
+            Intent it = new Intent(this, AutoUpdateService.class);
+
+            startService(it);
+
+        } else {
+            Toast.makeText(this, "获取天气信息失败", Toast.LENGTH_SHORT).show();
+        }
 
 
     }

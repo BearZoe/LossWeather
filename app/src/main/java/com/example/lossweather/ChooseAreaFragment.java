@@ -125,19 +125,19 @@ public class ChooseAreaFragment extends Fragment {
 
                     String weatherId = countyList.get(position).getWeatherId();
 
-                    Log.d(TAG, "onItemClick: " + weatherId);
-
 
                     if (getActivity() instanceof MainActivity) {
 
                         Intent it = new Intent(getActivity(), WeatherActivity.class);
-
                         it.putExtra("weather_id", weatherId);
-                        Log.d(TAG, "onItemClick: " + getActivity());
                         startActivity(it);
                         getActivity().finish();
+
+
+
                     } else if (getActivity() instanceof WeatherActivity) {
 
+                        Log.d(TAG, "onItemClick: "+ getActivity());
                         WeatherActivity activity = (WeatherActivity) getActivity();
 
                         activity.drawerLayout.closeDrawers();
